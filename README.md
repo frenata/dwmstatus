@@ -1,7 +1,10 @@
-go-dwmstatus
+dwmstatus
 ============
 
-Fork off ctgrl/go-dwmstatus that doesn't require any external libraries.
-Displays current mpd song, the three loadaverages, date and time, and the current battery level.
-
-Don't whine about support missing, figure it out yourself instead. Or just file a bug report or even a pull request. 
+Fork off oniichaNj/go-dwmstatus
+Current Changes from parent:
+ * removed battery check, since I'm using a desktop, might add this back in with graceful failure if I ever care to distribute
+ * removed alsa-bound getvol.h C functions
+ * added pulseaudio volume grabber, taken from github.com/vially/volumectl/pulseaudio
+ * -again, ideally this would gracefully detect what kind of sound you're using, but currently this is personal use only
+ * likely to be more personal touches
