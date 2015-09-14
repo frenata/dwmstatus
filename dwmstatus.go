@@ -2,7 +2,6 @@ package main
 
 // #cgo LDFLAGS: -lX11 -lasound
 // #include <X11/Xlib.h>
-// #include "getvol.h"
 import "C"
 
 import (
@@ -12,12 +11,13 @@ import (
 	"net"
 	"strings"
 	"time"
+	"github.com/frenata/dwmstatus/pulseaudio"
 )
 
 var dpy = C.XOpenDisplay(nil)
 
 func getVolumePerc() int {
-	return int(C.get_volume_perc())
+	return int(pulseaudio.New().Volume)
 }
 
 func getBatteryPercentage(path string) (perc int, err error) {
@@ -110,10 +110,10 @@ func main() {
 	}
 	for {
 		t := time.Now().Format("Mon 02 15:04")
-		b, err := getBatteryPercentage("/sys/class/power_supply/BAT0")
+		/* b, err := getBatteryPercentage("/sys/class/power_supply/BAT0")
 		if err != nil {
 			log.Println(err)
-		}
+		}*/
 		l, err := getLoadAverage("/proc/loadavg")
 		if err != nil {
 			log.Println(err)
@@ -123,7 +123,7 @@ func main() {
 			log.Println(err)
 		}
 		vol := getVolumePerc()
-		s := formatStatus("%s :: %d%% :: %s :: %s :: %d%%", m, vol, l, t, b)
+		s := formatStatus("%s :: %d%% :: %s :: %s", m, vol, l, t)
 		setStatus(s)
 		time.Sleep(time.Second)
 	}
