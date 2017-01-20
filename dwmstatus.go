@@ -21,21 +21,44 @@ func getVolumePerc() int {
 }
 
 func getBatteryPercentage(path string) (perc int, err error) {
-	energy_now, err := ioutil.ReadFile(fmt.Sprintf("%s/energy_now", path))
-	if err != nil {
+	now := newFileErrReader()
+	now.read(path + "/energy_now")
+	now.read(path + "/charge_now")
+	if now.err != nil {
 		perc = -1
 		return
 	}
-	energy_full, err := ioutil.ReadFile(fmt.Sprintf("%s/energy_full", path))
-	if err != nil {
+
+	full := newFileErrReader()
+	full.read(path + "/energy_full")
+	full.read(path + "/charge_full")
+	if full.err != nil {
 		perc = -1
 		return
 	}
+
 	var enow, efull int
-	fmt.Sscanf(string(energy_now), "%d", &enow)
-	fmt.Sscanf(string(energy_full), "%d", &efull)
+	fmt.Sscanf(now.String(), "%d", &enow)
+	fmt.Sscanf(full.String(), "%d", &efull)
 	perc = enow * 100 / efull
 	return
+}
+
+func getBatteryStatus(path string) (string, error) {
+	status := newFileErrReader()
+	status.read(path + "/status")
+	if status.err != nil {
+		return "", status.err
+	}
+
+	switch strings.TrimSpace(status.String()) {
+	case "Charging":
+		return "+", nil
+	case "Discharging":
+		return "-", nil
+	default:
+		return "", nil
+	}
 }
 
 func getLoadAverage(file string) (lavg string, err error) {
@@ -108,9 +131,15 @@ func main() {
 	if dpy == nil {
 		log.Fatal("Can't open display")
 	}
+	battery := "/sys/class/power_supply/BAT0"
+
 	for {
 		t := time.Now().Format("Mon 02 15:04")
-		b, err := getBatteryPercentage("/sys/class/power_supply/BAT0")
+		b, err := getBatteryPercentage(battery)
+		if err != nil {
+			log.Println(err)
+		}
+		s, err := getBatteryStatus(battery)
 		if err != nil {
 			log.Println(err)
 		}
@@ -123,8 +152,8 @@ func main() {
 			log.Println(err)
 		}
 		vol := getVolumePerc()
-		s := formatStatus("%s :: %d%% :: %s :: %s :: %d%%", m, vol, l, t, b)
-		setStatus(s)
+		status := formatStatus("%s :: %d%% :: %s :: %s :: %s%d%%", m, vol, l, t, s, b)
+		setStatus(status)
 		time.Sleep(time.Second)
 	}
 }
