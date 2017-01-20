@@ -7,7 +7,6 @@ import "C"
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -124,7 +123,7 @@ func formatStatus(format string, args ...interface{}) *C.char {
 
 func main() {
 	if dpy == nil {
-		log.Fatal("Can't open display")
+		panic("Can't open display")
 	}
 	battery := "/sys/class/power_supply/BAT0"
 
