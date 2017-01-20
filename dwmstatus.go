@@ -7,9 +7,9 @@ import "C"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,28 +20,25 @@ func getVolumePerc() int {
 	return int(C.get_volume_perc())
 }
 
-func getBatteryPercentage(path string) (perc int, err error) {
+func getBatteryPercentage(path string) (string, error) {
 	now := newFileErrReader()
 	now.read(path + "/energy_now")
 	now.read(path + "/charge_now")
 	if now.err != nil {
-		perc = -1
-		return
+		return "-1", now.err
 	}
 
 	full := newFileErrReader()
 	full.read(path + "/energy_full")
 	full.read(path + "/charge_full")
 	if full.err != nil {
-		perc = -1
-		return
+		return "-1", full.err
 	}
 
 	var enow, efull int
 	fmt.Sscanf(now.String(), "%d", &enow)
 	fmt.Sscanf(full.String(), "%d", &efull)
-	perc = enow * 100 / efull
-	return
+	return strconv.Itoa(enow * 100 / efull), nil
 }
 
 func getBatteryStatus(path string) (string, error) {
@@ -56,18 +53,20 @@ func getBatteryStatus(path string) (string, error) {
 		return "+", nil
 	case "Discharging":
 		return "-", nil
+	case "Full":
+		return "·", nil
 	default:
 		return "", nil
 	}
 }
 
-func getLoadAverage(file string) (lavg string, err error) {
-	loadavg, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "Couldn't read loadavg", err
+func getLoadAverage(file string) (string, error) {
+	loadavg := newFileErrReader()
+	loadavg.read(file)
+	if loadavg.err != nil {
+		return "Couldn't read loadavg", loadavg.err
 	}
-	lavg = strings.Join(strings.Fields(string(loadavg))[:3], " ")
-	return
+	return strings.Join(strings.Fields(loadavg.String())[:3], " "), nil
 }
 
 func setStatus(s *C.char) {
@@ -75,11 +74,10 @@ func setStatus(s *C.char) {
 	C.XSync(dpy, 1)
 }
 
-func nowPlaying(addr string) (np string, err error) {
+func nowPlaying(addr string) (string, error) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		np = "Couldn't connect to mpd."
-		return
+		return "Couldn't connect to mpd.", nil
 	}
 	defer conn.Close()
 	reply := make([]byte, 512)
@@ -92,8 +90,7 @@ func nowPlaying(addr string) (np string, err error) {
 	arr := strings.Split(string(r), "\n")
 	if arr[8] != "state: play" { //arr[8] is the state according to the mpd documentation
 		status := strings.SplitN(arr[8], ": ", 2)
-		np = fmt.Sprintf("mpd - [%s]", status[1]) //status[1] should now be stopped or paused
-		return
+		return fmt.Sprintf("mpd - [%s]", status[1]), nil //status[1] should now be stopped or paused
 	}
 
 	message = "currentsong\n"
@@ -114,11 +111,9 @@ func nowPlaying(addr string) (np string, err error) {
 				//do nothing with the field
 			}
 		}
-		np = artist + " - " + title
-		return
+		return artist + " - " + title, nil
 	} else { //This is a nonfatal error.
-		np = "Playlist is empty."
-		return
+		return "Playlist is empty.", nil
 	}
 }
 
@@ -135,24 +130,13 @@ func main() {
 
 	for {
 		t := time.Now().Format("Mon 02 15:04")
-		b, err := getBatteryPercentage(battery)
-		if err != nil {
-			log.Println(err)
-		}
-		s, err := getBatteryStatus(battery)
-		if err != nil {
-			log.Println(err)
-		}
-		l, err := getLoadAverage("/proc/loadavg")
-		if err != nil {
-			log.Println(err)
-		}
-		m, err := nowPlaying("localhost:6600")
-		if err != nil {
-			log.Println(err)
-		}
+		b := logErr(getBatteryPercentage(battery))
+		s := logErr(getBatteryStatus(battery))
+		l := logErr(getLoadAverage("/proc/loadavg"))
+		m := logErr(nowPlaying("localhost:6600"))
 		vol := getVolumePerc()
-		status := formatStatus("%s :: %d%% :: %s :: %s :: %s%d%%", m, vol, l, t, s, b)
+
+		status := formatStatus("%s :: %d%% :: %s :: %s :: %s%s%%", m, vol, l, t, s, b)
 		setStatus(status)
 		time.Sleep(time.Second)
 	}

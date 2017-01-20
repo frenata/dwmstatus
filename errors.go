@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io/ioutil"
+	"log"
 )
 
 // fileErrReader reads successive files until it reads without error, then stops reading.
@@ -21,3 +22,11 @@ func (fr *fileErrReader) read(filename string) {
 }
 
 func (fr fileErrReader) String() string { return string(fr.file) }
+
+// Log the error and return the value.
+func logErr(s string, err error) string {
+	if err != nil {
+		log.Println(err)
+	}
+	return s
+}
