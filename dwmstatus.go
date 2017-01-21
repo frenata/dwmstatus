@@ -127,15 +127,22 @@ func main() {
 		panic("Can't open display")
 	}
 	battery := "/sys/class/power_supply/BAT0"
-	mpdServer := os.Getenv("MPD_HOST")
-	mpdPort := os.Getenv("MPD_PORT")
+
+	var mpdServer, mpdPort string
+	if mpdServer = os.Getenv("MPD_HOST"); mpdServer == "" {
+		mpdServer = "localhost"
+	}
+	if mpdPort = os.Getenv("MPD_PORT"); mpdPort == "" {
+		mpdPort = "6600"
+	}
+	mpdAddress := mpdServer + ":" + mpdPort
 
 	for {
 		t := time.Now().Format("Mon 02 15:04")
 		b := logErr(getBatteryPercentage(battery))
 		s := logErr(getBatteryStatus(battery))
 		l := logErr(getLoadAverage("/proc/loadavg"))
-		m := logErr(nowPlaying(mpdServer + ":" + mpdPort))
+		m := logErr(nowPlaying(mpdAddress))
 		vol := getVolumePerc()
 
 		status := formatStatus("%s :: %d%% :: %s :: %s :: %s%s%%", m, vol, l, t, s, b)
