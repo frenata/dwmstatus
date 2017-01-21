@@ -8,6 +8,7 @@ import "C"
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -126,13 +127,15 @@ func main() {
 		panic("Can't open display")
 	}
 	battery := "/sys/class/power_supply/BAT0"
+	mpdServer := os.Getenv("MPD_HOST")
+	mpdPort := os.Getenv("MPD_PORT")
 
 	for {
 		t := time.Now().Format("Mon 02 15:04")
 		b := logErr(getBatteryPercentage(battery))
 		s := logErr(getBatteryStatus(battery))
 		l := logErr(getLoadAverage("/proc/loadavg"))
-		m := logErr(nowPlaying("localhost:6600"))
+		m := logErr(nowPlaying(mpdServer + ":" + mpdPort))
 		vol := getVolumePerc()
 
 		status := formatStatus("%s :: %d%% :: %s :: %s :: %s%s%%", m, vol, l, t, s, b)
